@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Start New Call - FraudSim Lab{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-phone-alt"></i> Initiate Outbound Call</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    <!-- Target Phone Number -->
+                    <div class="mb-4">
+                        <label class="form-label"><strong>Target Phone Number</strong></label>
+                        {{ form.target_number(class="form-control form-control-lg", 
+                                             placeholder="+1 (555) 123-4567",
+                                             required=True) }}
+                        <small class="form-text text-muted d-block mt-2">
+                            <i class="fas fa-info-circle"></i>
+                            Enter in E.164 format: <code>+1234567890</code>
+                        </small>
+                        {% if form.target_number.errors %}
+                            <div class="alert alert-danger mt-2">
+                                {% for error in form.target_number.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Scammer Persona -->
+                    <div class="mb-4">
+                        <label class="form-label"><strong>Scammer Persona Prompt</strong> <span class="badge bg-secondary">Optional</span></label>
+                        {{ form.scammer_persona(class="form-control", rows=6) }}
+                        <small class="form-text text-muted d-block mt-2">
+                            <i class="fas fa-lightbulb"></i>
+                            Customize the scammer's behavior and narrative. Leave blank for default PPP fraud scenario.
+                        </small>
+                        <div class="mt-3 p-3 bg-light rounded">
+                            <strong>Example Persona:</strong>
+                            <pre class="mb-0"><code>You are an aggressive PPP loan broker. You target small business owners and convince them to:
+1. Inflate payroll numbers
+2. Apply for multiple loans
+3. Wire funds to your account
+Use urgency and create trust quickly.</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                    </div>
+                </form>
+
+                <!-- Info Box -->
+                <div class="alert alert-info mt-4">
+                    <h6><i class="fas fa-shield-alt"></i> Important</h6>
+                    <ul class="mb-0">
+                        <li>This tool is for <strong>educational security research only</strong></li>
+                        <li>Ensure you have proper authorization before calling any number</li>
+                        <li>The system will record and analyze the conversation for fraud patterns</li>
+                        <li>All data is stored securely and only accessible to authorized users</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

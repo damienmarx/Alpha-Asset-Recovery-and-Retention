@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Call #{{ call.id }} - FraudSim Lab{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1>
+            <i class="fas fa-phone"></i> Call #{{ call.id }}
+            <small class="text-muted">{{ call.direction|capitalize }}</small>
+        </h1>
+        <p class="text-muted">
+            <strong>From:</strong> <code>{{ call.from_number }}</code> 
+            <strong>To:</strong> <code>{{ call.to_number }}</code>
+        </p>
+    </div>
+    <div class="col-md-4 text-end">
+        <span class="badge bg-primary p-2 me-2">
+            {% if call.status == 'in-progress' %}
+                <i class="fas fa-spinner fa-spin"></i> In Progress
+            {% elif call.status == 'completed' %}
+                <i class="fas fa-check"></i> Completed
+            {% else %}
+                {{ call.status }}
+            {% endif %}
+        </span>
+        {% if call.risk_score >= 70 %}
+            <span class="badge bg-danger p-2">Risk: {{ call.risk_score }}</span>
+        {% elif call.risk_score >= 40 %}
+            <span class="badge bg-warning p-2">Risk: {{ call.risk_score }}</span>
+        {% else %}
+            <span class="badge bg-success p-2">Risk: {{ call.risk_score }}</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <!-- Transcript -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-comments"></i> Conversation Transcript</h5>
+            </div>
+            <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                {% if turns %}
+                    {% for turn in turns %}
+                    <div class="mb-3">
+                        {% if turn.speaker == 'scammer' %}
+                            <div class="alert alert-danger p-2 mb-2">
+                                <strong><i class="fas fa-user-secret"></i> Scammer:</strong>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info p-2 mb-2">
+                                <strong><i class="fas fa-user"></i> Victim:</strong>
+                            </div>
+                        {% endif %}
+                        <p class="ms-3 mb-0">{{ turn.text }}</p>
+                        <small class="text-muted ms-3">{{ turn.timestamp.strftime('%H:%M:%S') }}</small>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-inbox fa-2x opacity-50 mb-2"></i>
+                    <p>No transcript yet. Call in progress or not started.</p>
+                </div>
+                {% endif %}
+                <div id="live-transcript"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts & Comments -->
+    <div class="col-lg-4">
+        <!-- Alerts -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Alerts ({{ alerts|length }})</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if alerts %}
+                <div id="alerts-list">
+                    {% for alert in alerts %}
+                    <div class="alert alert-{% if alert.severity == 'high' %}danger{% elif alert.severity == 'medium' %}warning{% else %}info{% endif %} m-3 mb-2">
+                        <strong>{{ alert.severity|upper }}</strong><br>
+                        <small>{{ alert.description }}</small><br>
+                        <small class="text-muted">{{ alert.detected_at.strftime('%H:%M:%S') }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="p-3 text-center text-muted">
+                    <i class="fas fa-check-circle opacity-50"></i> No alerts
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Comments -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-comments"></i> Team Comments</h5>
+            </div>
+            <div class="card-body">
+                <div id="comments" style="max-height: 250px; overflow-y: auto; margin-bottom: 1rem;">
+                    {% if comments %}
+                        {% for comment in comments %}
+                        <div class="mb-3 pb-3 border-bottom">
+                            <strong>{{ comment.user.username }}</strong>
+                            <small class="text-muted d-block">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            <p class="mb-0 mt-1">{{ comment.text }}</p>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                {% if current_user.is_authenticated %}
+                <form id="comment-form">
+                    <input type="hidden" id="call_id" value="{{ call.id }}">
+                    <div class="mb-2">
+                        <textarea class="form-control form-control-sm" id="comment-text" rows="2" 
+                                  placeholder="Add a comment..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary w-100">
+                        <i class="fas fa-paper-plane"></i> Post Comment
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var socket = io();
+    var callId = {{ call.id }};
+
+    // Join the call's room for real-time updates
+    socket.emit('join_call', {call_id: callId});
+
+    // New turn (transcript update)
+    socket.on('new_turn', function(data) {
+        if (data.call_id == callId) {
+            var speaker = data.speaker === 'scammer' ? 
+                '<div class="alert alert-danger p-2 mb-2"><strong><i class="fas fa-user-secret"></i> Scammer:</strong></div>' :
+                '<div class="alert alert-info p-2 mb-2"><strong><i class="fas fa-user"></i> Victim:</strong></div>';
+            var html = '<div class="mb-3">' + speaker + 
+                       '<p class="ms-3 mb-0">' + data.text + '</p>' +
+                       '<small class="text-muted ms-3">' + new Date().toLocaleTimeString() + '</small></div>';
+            $('#live-transcript').append(html);
+        }
+    });
+
+    // New alert
+    socket.on('new_alert', function(data) {
+        if (data.call_id == callId) {
+            var severity = data.alert.severity;
+            var alertClass = severity === 'high' ? 'danger' : severity === 'medium' ? 'warning' : 'info';
+            var html = '<div class="alert alert-' + alertClass + ' m-3 mb-2">' +
+                       '<strong>' + severity.toUpperCase() + '</strong><br>' +
+                       '<small>' + data.alert.description + '</small></div>';
+            $('#alerts-list').prepend(html);
+        }
+    });
+
+    // New comment
+    socket.on('new_comment', function(data) {
+        if (data.call_id == callId) {
+            var html = '<div class="mb-3 pb-3 border-bottom">' +
+                       '<strong>' + data.comment.user + '</strong>' +
+                       '<small class="text-muted d-block">Just now</small>' +
+                       '<p class="mb-0 mt-1">' + data.comment.text + '</p></div>';
+            $('#comments').prepend(html);
+        }
+    });
+
+    // Submit comment
+    $('#comment-form').submit(function(e) {
+        e.preventDefault();
+        var text = $('#comment-text').val();
+        $.ajax({
+            url: '/api/comment',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({call_id: callId, text: text}),
+            success: function() {
+                $('#comment-text').val('');
+            }
+        });
+    });
+</script>
+{% endblock %}

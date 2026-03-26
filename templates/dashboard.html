@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FraudSim Lab{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1>
+            <i class="fas fa-chart-line"></i>
+            {% if settings %}{{ settings.dashboard_title }}{% else %}FraudSim Lab Dashboard{% endif %}
+        </h1>
+        <p class="text-muted">Real-time fraud simulation and detection</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('new_call') }}" class="btn btn-primary btn-lg">
+            <i class="fas fa-phone-alt"></i> Start New Call
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Calls Section -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-phone"></i> Recent Calls</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if calls %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Status</th>
+                                <th>Risk Score</th>
+                                <th>Started</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for call in calls[:10] %}
+                            <tr>
+                                <td><strong>#{{ call.id }}</strong></td>
+                                <td><code>{{ call.from_number }}</code></td>
+                                <td><code>{{ call.to_number }}</code></td>
+                                <td>
+                                    {% if call.status == 'in-progress' %}
+                                        <span class="badge bg-warning"><i class="fas fa-spinner fa-spin"></i> In Progress</span>
+                                    {% elif call.status == 'completed' %}
+                                        <span class="badge bg-success"><i class="fas fa-check"></i> Completed</span>
+                                    {% elif call.status == 'failed' %}
+                                        <span class="badge bg-danger"><i class="fas fa-times"></i> Failed</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ call.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if call.risk_score >= 70 %}
+                                        <span class="badge bg-danger">{{ call.risk_score }}</span>
+                                    {% elif call.risk_score >= 40 %}
+                                        <span class="badge bg-warning">{{ call.risk_score }}</span>
+                                    {% else %}
+                                        <span class="badge bg-success">{{ call.risk_score }}</span>
+                                    {% endif %}
+                                </td>
+                                <td><small>{{ call.started_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
+                                <td>
+                                    <a href="{{ url_for('call_detail', call_id=call.id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-muted">
+                    <i class="fas fa-inbox fa-3x mb-3 opacity-50"></i>
+                    <p>No calls yet. <a href="{{ url_for('new_call') }}">Start one now!</a></p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Call Statistics -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted">Total Calls</h6>
+                        <h2 class="mb-0">{{ calls|length }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted">High Risk</h6>
+                        <h2 class="mb-0">{{ calls|selectattr('risk_score', 'ge', 70)|list|length }}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts Section -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Recent Alerts</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if alerts %}
+                <div class="list-group list-group-flush">
+                    {% for alert in alerts[:10] %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <div>
+                                {% if alert.severity == 'high' %}
+                                    <span class="badge bg-danger">HIGH</span>
+                                {% elif alert.severity == 'medium' %}
+                                    <span class="badge bg-warning">MEDIUM</span>
+                                {% else %}
+                                    <span class="badge bg-info">LOW</span>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">{{ alert.detected_at.strftime('%H:%M') }}</small>
+                        </div>
+                        <p class="mb-1"><small>{{ alert.description }}</small></p>
+                        <small class="text-muted">Call #{{ alert.call_id }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-muted">
+                    <i class="fas fa-check-circle fa-2x mb-2 opacity-50"></i>
+                    <p>No alerts</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> System Status</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-6">LLM Provider:</dt>
+                    <dd class="col-sm-6"><code>{{ config.LLM_PROVIDER }}</code></dd>
+                    
+                    <dt class="col-sm-6">Detection:</dt>
+                    <dd class="col-sm-6">
+                        {% if config.ENABLE_LLM_DETECTION %}
+                            <span class="badge bg-success">Enabled</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Disabled</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-6">Twilio:</dt>
+                    <dd class="col-sm-6">
+                        {% if config.TWILIO_ACCOUNT_SID %}
+                            <span class="badge bg-success">Ready</span>
+                        {% else %}
+                            <span class="badge bg-warning">Not Configured</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Real-time updates via WebSocket
+    var socket = io();
+    
+    socket.on('new_turn', function(data) {
+        console.log('New turn:', data);
+        // Refresh dashboard or update in real-time
+    });
+    
+    socket.on('new_alert', function(data) {
+        console.log('New alert:', data);
+        // Show notification
+    });
+</script>
+{% endblock %}

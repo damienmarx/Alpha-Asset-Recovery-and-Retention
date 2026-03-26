@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}All Calls - FraudSim Lab{% endblock %}
+
+{% block content %}
+<h1><i class="fas fa-list"></i> All Calls</h1>
+
+<div class="card">
+    <div class="card-header">
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="mb-0">Call History</h5>
+            </div>
+            <div class="col-md-6 text-end">
+                <a href="{{ url_for('new_call') }}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-plus"></i> New Call
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% if calls.items %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Direction</th>
+                        <th>Status</th>
+                        <th>Risk</th>
+                        <th>Started</th>
+                        <th>Duration</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for call in calls.items %}
+                    <tr>
+                        <td><strong>#{{ call.id }}</strong></td>
+                        <td><code>{{ call.from_number }}</code></td>
+                        <td><code>{{ call.to_number }}</code></td>
+                        <td>
+                            {% if call.direction == 'inbound' %}
+                                <span class="badge bg-info"><i class="fas fa-arrow-down"></i> Inbound</span>
+                            {% else %}
+                                <span class="badge bg-warning"><i class="fas fa-arrow-up"></i> Outbound</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if call.status == 'in-progress' %}
+                                <span class="badge bg-warning"><i class="fas fa-spinner fa-spin"></i> In Progress</span>
+                            {% elif call.status == 'completed' %}
+                                <span class="badge bg-success"><i class="fas fa-check"></i> Completed</span>
+                            {% elif call.status == 'failed' %}
+                                <span class="badge bg-danger"><i class="fas fa-times"></i> Failed</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ call.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if call.risk_score >= 70 %}
+                                <span class="badge bg-danger">{{ call.risk_score }}</span>
+                            {% elif call.risk_score >= 40 %}
+                                <span class="badge bg-warning">{{ call.risk_score }}</span>
+                            {% else %}
+                                <span class="badge bg-success">{{ call.risk_score }}</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ call.started_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
+                        <td>
+                            {% if call.ended_at %}
+                                <small>{{ (call.ended_at - call.started_at).total_seconds()|int }}s</small>
+                            {% else %}
+                                <small>—</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('call_detail', call_id=call.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center text-muted">
+            <i class="fas fa-inbox fa-3x mb-2 opacity-50"></i>
+            <p>No calls yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if calls.pages > 1 %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if calls.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('calls_list', page=calls.prev_num) }}">Previous</a>
+            </li>
+        {% endif %}
+
+        {% for page_num in calls.iter_pages() %}
+            {% if page_num %}
+                {% if page_num == calls.page %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('calls_list', page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if calls.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('calls_list', page=calls.next_num) }}">Next</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

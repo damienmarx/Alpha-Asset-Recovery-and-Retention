@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - FraudSim Lab{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 text-center">
+        <h1 class="display-1">500</h1>
+        <h2>Server Error</h2>
+        <p class="text-muted">Something went wrong on our end.</p>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+            <i class="fas fa-home"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}
